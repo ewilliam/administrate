@@ -62,6 +62,7 @@ specify, including:
 - `Field::Select`
 - `Field::String`
 - `Field::Text`
+- `Field::Password`
 
 ## Customizing Fields
 
@@ -72,7 +73,37 @@ which are specified through the `.with_options` class method:
 
 **Field::BelongsTo**
 
-`:order` - order of the dropdown menu, can be ordered by more than one column `"name, email DESC"`
+`:order` - Specifies the order of the dropdown menu, can be ordered by more
+than one column. e.g.: `"name, email DESC"`.
+
+`:primary_key` - Specifies object's primary_key. Defaults to `:id`.
+
+`:foreign_key` - Specifies the name of the foreign key directly.
+Defaults to `:#{attribute}_id`.
+
+`:scope` - Specifies a custom scope inside a callable. Useful for preloading.
+Example: `.with_options(scope: -> { MyModel.includes(:rel).limit(5) })`
+
+`:class_name` - Specifies the name of the associated class.
+Defaults to `:#{attribute}.to_s.singularize.camelcase`.
+
+`:searchable` - Specify if the attribute should be considered when searching.
+Default is `false`.
+
+`searchable_field` - Specify which column to use on the search, only applies
+if `searchable` is `true`
+
+For example:
+
+```ruby
+  country: Field::BelongsTo(
+    searchable: true,
+    seachable_field: 'name',
+  )
+```
+
+with this, you will be able to search through the column `name` from the
+association `belongs_to :country`, from your model.
 
 **Field::HasMany**
 
@@ -87,11 +118,31 @@ which are specified through the `.with_options` class method:
 
 `:foreign_key` - Specifies the name of the foreign key directly. Defaults to `:#{attribute}_id`
 
-**Field::BelongsTo**
+`:class_name` - Specifies the name of the associated class.
+Defaults to `:#{attribute}.to_s.singularize.camelcase`.
 
-`:primary_key` - Specifies object's primary_key. Defaults to `:id`.
+**Field::HasOne**
 
-`:foreign_key` - Specifies the name of the foreign key directly. Defaults to `:#{attribute}_id`
+`:class_name` - Specifies the name of the associated class.
+Defaults to `:#{attribute}.to_s.singularize.camelcase`.
+
+`:searchable` - Specify if the attribute should be considered when searching.
+Default is `false`.
+
+`searchable_field` - Specify which column to use on the search, only applies if
+`searchable` is `true`
+
+For example:
+
+```ruby
+  cities: Field::HasMany(
+    searchable: true,
+    seachable_field: 'name',
+  )
+```
+
+with this, you will be able to search through the column `name` from the
+association `has_many :cities`, from your model.
 
 **Field::Number**
 
@@ -124,6 +175,17 @@ Or, to display a distance in kilometers:
 `:classes` - Specify a list of classes whose objects will be used to populate select boxes for editing this polymorphic field.
 Default is `[]`.
 
+`:order` - What to sort the association by in the form select.
+Default is `nil`.
+
+**Field::DateTime**
+
+`:format` - Specify what format, using `strftime` you would like `DateTime`
+objects to display as.
+
+`:timezone` - Specify which timezone `Date` and `DateTime` objects are based
+in.
+
 **Field::Select**
 
 `:collection` - Specify the array or range to select from.  Defaults to `[]`.
@@ -146,6 +208,17 @@ Default is `false`.
 
 `:truncate` - Set the number of characters to display in the index view.
 Defaults to `50`.
+
+**Field::Password**
+
+`:searchable` - Specify if the attribute should be considered when searching.
+Default is `false`.
+
+`:truncate` - Set the number of characters to display in the views.
+Defaults to `50`.
+
+`:character` - Set the replace character.
+Defaults to `•`.
 
 ### Defining Labels
 

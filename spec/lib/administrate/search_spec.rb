@@ -1,5 +1,4 @@
-require "spec_helper"
-require "support/constant_helpers"
+require "rails_helper"
 require "administrate/field/string"
 require "administrate/field/email"
 require "administrate/field/number"
@@ -10,7 +9,20 @@ class MockDashboard
     name: Administrate::Field::String,
     email: Administrate::Field::Email,
     phone: Administrate::Field::Number,
-  }
+  }.freeze
+end
+
+class MockDashboardWithAssociation
+  ATTRIBUTE_TYPES = {
+    role: Administrate::Field::BelongsTo.with_options(
+      searchable: true,
+      searchable_field: "name",
+    ),
+    address: Administrate::Field::HasOne.with_options(
+      searchable: true,
+      searchable_field: "street",
+    ),
+  }.freeze
 end
 
 describe Administrate::Search do
@@ -45,7 +57,7 @@ describe Administrate::Search do
       end
     end
 
-    it "searches using lower() + LIKE for all searchable fields" do
+    it "searches using LOWER + LIKE for all searchable fields" do
       begin
         class User < ActiveRecord::Base; end
         scoped_object = User.default_scoped
@@ -53,8 +65,8 @@ describe Administrate::Search do
                                           MockDashboard,
                                           "test")
         expected_query = [
-          "lower(\"users\".\"name\") LIKE ?"\
-          " OR lower(\"users\".\"email\") LIKE ?",
+          'LOWER(CAST("users"."name" AS CHAR(256))) LIKE ?'\
+          ' OR LOWER(CAST("users"."email" AS CHAR(256))) LIKE ?',
           "%test%",
           "%test%",
         ]
@@ -66,7 +78,7 @@ describe Administrate::Search do
       end
     end
 
-    it "converts search term lower case for latin and cyrillic strings" do
+    it "converts search term LOWER case for latin and cyrillic strings" do
       begin
         class User < ActiveRecord::Base; end
         scoped_object = User.default_scoped
@@ -74,8 +86,8 @@ describe Administrate::Search do
                                           MockDashboard,
                                           "Тест Test")
         expected_query = [
-          "lower(\"users\".\"name\") LIKE ?"\
-          " OR lower(\"users\".\"email\") LIKE ?",
+          'LOWER(CAST("users"."name" AS CHAR(256))) LIKE ?'\
+          ' OR LOWER(CAST("users"."email" AS CHAR(256))) LIKE ?',
           "%тест test%",
           "%тест test%",
         ]
@@ -84,6 +96,45 @@ describe Administrate::Search do
         search.run
       ensure
         remove_constants :User
+      end
+    end
+
+    context "when searching through associations" do
+      let(:scoped_object) { double(:scoped_object) }
+
+      let(:search) do
+        Administrate::Search.new(
+          scoped_object,
+          MockDashboardWithAssociation,
+          "Тест Test",
+        )
+      end
+
+      let(:expected_query) do
+        [
+          'LOWER(CAST("roles"."name" AS CHAR(256))) LIKE ?'\
+          ' OR LOWER(CAST("addresses"."street" AS CHAR(256))) LIKE ?',
+          "%тест test%",
+          "%тест test%",
+        ]
+      end
+
+      it "joins with the correct association table to query" do
+        allow(scoped_object).to receive(:where)
+
+        expect(scoped_object).to receive(:joins).with(%i(role address)).
+          and_return(scoped_object)
+
+        search.run
+      end
+
+      it "builds the 'where' clause using the joined tables" do
+        allow(scoped_object).to receive(:joins).with(%i(role address)).
+          and_return(scoped_object)
+
+        expect(scoped_object).to receive(:where).with(*expected_query)
+
+        search.run
       end
     end
   end

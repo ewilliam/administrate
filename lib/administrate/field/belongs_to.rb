@@ -3,7 +3,7 @@ require_relative "associative"
 module Administrate
   module Field
     class BelongsTo < Associative
-      def self.permitted_attribute(attr)
+      def self.permitted_attribute(attr, _options = nil)
         :"#{attr}_id"
       end
 
@@ -24,8 +24,10 @@ module Administrate
       private
 
       def candidate_resources
+        scope = options[:scope] ? options[:scope].call : associated_class.all
+
         order = options.delete(:order)
-        order ? associated_class.order(order) : associated_class.all
+        order ? scope.reorder(order) : scope
       end
 
       def display_candidate_resource(resource)
